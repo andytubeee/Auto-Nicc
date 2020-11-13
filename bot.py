@@ -13,6 +13,11 @@ GUILD = os.getenv('DISCORD_GUILD')
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 
+def checkRole(roleName, roleCollection):
+    for rc in roleCollection:
+        if roleName == rc.name:
+            return True
+    return False
 
 @client.event
 async def on_ready():
@@ -21,7 +26,7 @@ async def on_ready():
             break
 
     print(f'{client.user} is connected to the following guild: \n'
-          f'{guild.name} (id: {guild.id})')
+          f'{guild.name} (id: {guild.id}) \n')
 
 
 @client.event
@@ -50,8 +55,12 @@ async def on_message(msg):
 
     elif message == "*assignteams":
         members = []
-        softwareMem = []
-        desMem = []
+        softwareMem = set()
+        desMem = set()
+        generalMembers = set()
+
+
+        teams = []
 
         totalMembers = 0
         geeks = 0
@@ -60,22 +69,33 @@ async def on_message(msg):
 
         for guild in client.guilds:
             for member in guild.members:
+                softwareBool = checkRole('Software', member.roles)
+                designBool = checkRole('Designer', member.roles)
+                memberBool = checkRole('Member', member.roles)
+                genBool = not (softwareBool or designBool)
+
                 for role in member.roles:
                     if role.name == "Member":
+                        if genBool:
+                            generalMembers.add(member.display_name)
                         totalMembers += 1
                         members.append(member.display_name)
                     if role.name == "Software":
                         geeks += 1
-                        softwareMem.append(member.display_name)
+                        softwareMem.add(member.display_name)
                     if role.name == "Designer":
                         creativeppl += 1
-                        desMem.append(member.display_name)
+                        desMem.add(member.display_name)
+
+
 
                     generalppl = totalMembers - (creativeppl + geeks)
 
         print(f"Available members: {members}")
         print(f"Software members: {softwareMem}")
         print(f"Design members: {desMem}")
+        print(f"General members: {generalMembers}")
+
 
         print("\nTeams:\n")
 
@@ -85,38 +105,34 @@ async def on_message(msg):
             f"We currently have a total of {totalMembers} members. That is, {generalppl} "
             f"general participants, {geeks} geeks, and {creativeppl} creative people onboard.")
 
-        if int(totalMembers % 4) == 0:
+        for i in range(totalMembers//4):
+            team = random.sample(members, 4)
+            for t in team:
+                members.remove(t)
+            teams.append(team)
 
-            # Teams of 4
+        print(len(members))
 
-            await msg.channel.send(f"We can try {int(totalMembers / 4)} teams of 4 (Full team).")
+        if len(members) == 3:
+            teams.append([members[0], members[1], members[2]])
 
-            teams = [random.sample(members, 4) for _ in range(int(totalMembers / 4))]
-            await msg.channel.send("The teams are:")
-            for t in teams:
-                await msg.channel.send("; ".join(t))
+        elif len(members) == 1:
+            t1 = teams[0]
+            m1 = t1.pop(random.randrange(len(t1)))
+            t2 = teams[1]
+            m2 = t2.pop(random.randrange(len(t1)))
 
-        if int(totalMembers % 4) == 3:
-            await msg.channel.send(
-                f"We can try {int(totalMembers / 4)} teams of 4 (Full team), and a team of "
-                f"{int(totalMembers % 4)} people.")
+            teams.append([members[0], m1, m2])
+        elif len(members) == 2:
+            t1 = teams[0]
+            m1 = t1.pop(random.randrange(len(t1)))
 
-            teams = [random.sample(members, 4) for _ in range(int(totalMembers // 4))] + \
-                    [random.sample(members, 3)]
+            teams.append([members[0], members[1], m1])
 
-            print(teams)
 
-        elif 1 <= int(totalMembers % 4) <= 2 and int(totalMembers % 4) != 0:
-            # Two people shouldn't be on team
-            await msg.channel.send(
-                f"We can try {int(totalMembers / 3)} teams of 3 (Full team), and a team of "
-                f"{int(totalMembers % 3)} people.")
-
-        teams = [random.sample(members, 3) for _ in range(int(totalMembers // 3))] + \
-                [random.sample(members, int(totalMembers % 3))]
 
         print(teams)
 
-
 # Activate bot
 client.run(TOKEN)
+
