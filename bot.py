@@ -22,6 +22,14 @@ def checkRole(roleName, roleCollection):
             return True
     return False
 
+def saveCSV(dictionay, file_name):
+    try:
+        teamsDF = pd.DataFrame.from_dict(dictionay, orient='index')
+        teamsDF.to_csv(file_name, na_rep='-', index=False, header=False)
+        print(f"Saved as {file_name}")
+    except:
+        print("Error!")
+
 
 @client.event
 async def on_ready():
@@ -142,13 +150,7 @@ async def on_message(msg):
         print('\n')
 
         # Save teams to CSV
-
-        try:
-            teamsDF = pd.DataFrame.from_dict(teamsDict, orient='index')
-            teamsDF.to_csv('Teams.csv', na_rep='-', index=False, header=False)
-            print("Saved to Teams.csv")
-        except:
-            print("Error!")
+        saveCSV(teamsDict, 'teams.csv')
 
 
 # Activate bot
