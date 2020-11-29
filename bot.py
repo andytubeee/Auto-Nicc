@@ -22,6 +22,7 @@ def checkRole(roleName, roleCollection):
             return True
     return False
 
+
 def saveCSV(dictionay, file_name):
     try:
         teamsDF = pd.DataFrame.from_dict(dictionay, orient='index')
@@ -30,6 +31,16 @@ def saveCSV(dictionay, file_name):
     except:
         print("Error!")
 
+def checkExpertise(team, allSoftware, allDesign):
+    numSoftware = 0
+    numDesign = 0
+    for t in team:
+        if t in allSoftware:
+            numSoftware += 1
+        if t in allDesign:
+            numDesign += 1
+
+    return numSoftware, numDesign
 
 @client.event
 async def on_ready():
@@ -71,6 +82,13 @@ async def on_message(msg):
         desMem = set()
         generalMembers = set()
 
+        oldTeams = readCSV.getOldTeams()
+
+        # print(teamsDF.head())
+        print("\n\nOld Teams: \n")
+        print(readCSV.getOldTeams())
+        print('\n')
+
         teams = []
 
         totalMembers = 0
@@ -104,7 +122,7 @@ async def on_message(msg):
         print(f"Available members: {members}")
         print(f"Software members: {softwareMem}")
         print(f"Design members: {desMem}")
-        print(f"General members: {generalMembers}")
+        print(f"Beginners: {generalMembers}")
 
 
         # Team assign prep
@@ -114,13 +132,12 @@ async def on_message(msg):
             f"general participants, {geeks} geeks, and {creativeppl} creative people onboard.")
 
         for i in range(totalMembers // 4):
-            team = random.sample(members, 4)
-            for t in team:
+            originalTeam = random.sample(members, 4)
+            for t in originalTeam:
                 members.remove(t)
-            teams.append(team)
+            teams.append(originalTeam)
 
-        # print(len(members))
-
+        # Team balance out by number
         if len(members) == 3:
             teams.append([members[0], members[1], members[2]])
 
@@ -137,20 +154,90 @@ async def on_message(msg):
 
             teams.append([members[0], members[1], m1])
 
+        for originalTeam in teams:
+            # print("\nBefore:")
+            # print(team)
+            sMember, dMember = checkExpertise(originalTeam, softwareMem, desMem)
+            # print(sMember, dMember)
+            if sMember == 0:
+                # print('Got in sMember = 0 (Original team)')
+                foundReplacement = False
+                for team1 in teams:
+                    if team1 != originalTeam:
+                        # print('Got in team1 not the same team')
+                        sMember1, dMember1 = checkExpertise(team1, softwareMem, desMem)
+                        if sMember1 >= 2:
+                            # print('Got in sMember >= 2')
+                            for member in team1:
+                                if member in softwareMem:
+                                    # print('Got in member in softwareMem')
+                                    if dMember1 >= 2 or member not in desMem:
+                                        # print('Got in dMember1 >= 2')
+                                        team1.remove(member)
+                                        originalTeam.append(member)
+
+                                        team1.append(originalTeam[0])
+                                        originalTeam.remove(originalTeam[0])
+                                        foundReplacement = True
+                                        break
+
+                    if foundReplacement:
+                        break
+
+            if dMember == 0:
+                # print('Got in sMember = 0 (Original team)')
+                foundReplacement = False
+                for team1 in teams:
+                    if team1 != originalTeam:
+                        # print('Got in team1 not the same team')
+                        sMember1, dMember1 = checkExpertise(team1, softwareMem, desMem)
+                        if dMember1 >= 2:
+                            # print('Got in sMember >= 2')
+                            for member in team1:
+                                if member in desMem:
+                                    # print('Got in member in softwareMem')
+                                    if sMember1 >= 2 or member not in softwareMem:
+                                        for originalMember in originalTeam:
+                                            if sMember >= 2 or originalMember not in softwareMem:
+                                                # print('Got in dMember1 >= 2')
+                                                team1.remove(member)
+                                                originalTeam.append(member)
+
+                                                team1.append(originalMember)
+                                                originalTeam.remove(originalMember)
+                                                foundReplacement = True
+                                                break
+
+                                if foundReplacement:
+                                    break
+
+                    if foundReplacement:
+                        break
+
+        tempMem = []
+        for team in teams:
+            for member in team:
+                if member in tempMem:
+                    print('Found duplicates')
+                tempMem.append(member)
+
+        print(len(tempMem), len(members))
+
+        for t in teams:
+            print(t)
+            sMember, dMember = checkExpertise(t, softwareMem, desMem)
+            print(sMember, dMember)
+
+        # Prepare saving
         teamsDict = dict()
         for i, t in enumerate(teams):
             teamsDict[f"Team {i + 1}"] = t
 
-        # print("\nTeams:\n")
-        # print(teamsDict)
-
-        # print(teamsDF.head())
-        print("\n\nOld Teams: \n")
-        print(readCSV.getOldTeams())
-        print('\n')
-
         # Save teams to CSV
         saveCSV(teamsDict, 'teams.csv')
+
+        for t in teams:
+            await msg.channel.send(t)
 
 
 # Activate bot
