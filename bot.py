@@ -1,6 +1,8 @@
 import os
 import uuid
 import random
+import pandas as pd
+import readCSV
 
 import discord
 from dotenv import load_dotenv
@@ -13,11 +15,13 @@ GUILD = os.getenv('DISCORD_GUILD')
 intents = discord.Intents.all()
 client = discord.Client(intents=intents)
 
+
 def checkRole(roleName, roleCollection):
     for rc in roleCollection:
         if roleName == rc.name:
             return True
     return False
+
 
 @client.event
 async def on_ready():
@@ -59,7 +63,6 @@ async def on_message(msg):
         desMem = set()
         generalMembers = set()
 
-
         teams = []
 
         totalMembers = 0
@@ -72,6 +75,7 @@ async def on_message(msg):
                 softwareBool = checkRole('Software', member.roles)
                 designBool = checkRole('Designer', member.roles)
                 memberBool = checkRole('Member', member.roles)
+                teacherBool = checkRole('Teacher', member.roles)
                 genBool = not (softwareBool or designBool)
 
                 for role in member.roles:
@@ -87,8 +91,6 @@ async def on_message(msg):
                         creativeppl += 1
                         desMem.add(member.display_name)
 
-
-
                     generalppl = totalMembers - (creativeppl + geeks)
 
         print(f"Available members: {members}")
@@ -97,21 +99,19 @@ async def on_message(msg):
         print(f"General members: {generalMembers}")
 
 
-        print("\nTeams:\n")
-
         # Team assign prep
 
         await msg.channel.send(
             f"We currently have a total of {totalMembers} members. That is, {generalppl} "
             f"general participants, {geeks} geeks, and {creativeppl} creative people onboard.")
 
-        for i in range(totalMembers//4):
+        for i in range(totalMembers // 4):
             team = random.sample(members, 4)
             for t in team:
                 members.remove(t)
             teams.append(team)
 
-        print(len(members))
+        # print(len(members))
 
         if len(members) == 3:
             teams.append([members[0], members[1], members[2]])
@@ -129,10 +129,27 @@ async def on_message(msg):
 
             teams.append([members[0], members[1], m1])
 
+        teamsDict = dict()
+        for i, t in enumerate(teams):
+            teamsDict[f"Team {i + 1}"] = t
 
+        # print("\nTeams:\n")
+        # print(teamsDict)
 
-        print(teams)
+        # print(teamsDF.head())
+        print("\n\nOld Teams: \n")
+        print(readCSV.getOldTeams())
+        print('\n')
+
+        # Save teams to CSV
+
+        try:
+            teamsDF = pd.DataFrame.from_dict(teamsDict, orient='index')
+            teamsDF.to_csv('Teams.csv', na_rep='-', index=False, header=False)
+            print("Saved to Teams.csv")
+        except:
+            print("Error!")
+
 
 # Activate bot
 client.run(TOKEN)
-
